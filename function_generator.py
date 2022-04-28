@@ -123,7 +123,7 @@ def Aan(s):
 def javadoc(
     description,
     *,
-    indent=0,
+    indent="",
     authors=None,
     parameters=None,
     result=None,
@@ -138,63 +138,57 @@ def javadoc(
     sym2let = str.maketrans("{}@~", "ÍÌÆµ")
     let2sym = str.maketrans("ÍÌÆµ", "{}@ ")
 
-    base_width = 80 - 3 - indent
+    wrap_width = 80
 
     authors = tuple(authors) if authors is not None else ()
     parameters = tuple(parameters) if parameters is not None else ()
     result = str(result) if result is not None else ""
 
-    def wrap_iter(s):
-        yield s
-        w = f"{' '*len(s)}"
-        while True:
-            yield w
-
     def generator():
-        yield f"{' '*indent}/**"
+        yield f"{indent}/**"
 
         for line in textwrap.wrap(
             description.translate(sym2let),
-            width=base_width,
+            width=wrap_width,
+            initial_indent=f"{indent} * ",
+            subsequent_indent=f"{indent} * ",
             break_on_hyphens=False,
             break_long_words=False,
         ):
-            yield f"{' '*indent} * {line.translate(let2sym)}"
+            yield line.translate(let2sym)
 
         if authors:
-            yield f"{' '*indent} *"
+            yield f"{indent} *"
             for author in authors:
-                yield f"{' '*indent} * @author {author}"
+                yield f"{indent} * @author {author}"
 
         if parameters:
-            yield f"{' '*indent} *"
+            yield f"{indent} *"
             align = 1 + max((len(name) for name, _ in parameters))
             for name, desc in parameters:
-                for wrap, line in zip(
-                    wrap_iter(f"@param {name:<{align}}"),
-                    textwrap.wrap(
-                        desc.translate(sym2let),
-                        width=base_width - 7 - align,
-                        break_on_hyphens=False,
-                        break_long_words=False,
-                    ),
-                ):
-                    yield f"{' '*indent} * {wrap}{line.translate(let2sym)}"
-
-        if result:
-            yield f"{' '*indent} *"
-            for wrap, line in zip(
-                wrap_iter("@return "),
-                textwrap.wrap(
-                    result.translate(sym2let),
-                    width=base_width - 8,
+                for line in textwrap.wrap(
+                    desc.translate(sym2let),
+                    width=wrap_width,
+                    initial_indent=f"{indent} * @param {name:<{align}}",
+                    subsequent_indent=f"{indent} * {' '*(7+align)}",
                     break_on_hyphens=False,
                     break_long_words=False,
-                ),
-            ):
-                yield f"{' '*indent} * {wrap}{line.translate(let2sym)}"
+                ):
+                    yield line.translate(let2sym)
 
-        yield f"{' '*indent} */"
+        if result:
+            yield f"{indent} *"
+            for line in textwrap.wrap(
+                result.translate(sym2let),
+                width=wrap_width,
+                initial_indent=f"{indent} * @return ",
+                subsequent_indent=f"{indent} * {' '*8}",
+                break_on_hyphens=False,
+                break_long_words=False,
+            ):
+                yield line.translate(let2sym)
+
+        yield f"{indent} */"
 
     return generator() if output_as_generator else list(generator())
 
@@ -537,7 +531,7 @@ for argc in range(0, 4 + 1):
 
             mthd_doc = javadoc(
                 mthd_desc,
-                indent=4,
+                indent=f"{' '*4}",
                 parameters=((a_name, a_desc) for _, a_name, _, a_desc in a_list),
                 result=rslt_desc,
             )
@@ -588,7 +582,7 @@ for argc in range(0, 4 + 1):
             if argc == 1 and ret != "object" and args == {ret}:
                 mdoc = javadoc(
                     f"Returns {aan(operation)} {operation} that always returns its input argument.",
-                    indent=4,
+                    indent=f"{' '*4}",
                     result=f"{Aan(operation)} {operation} that always returns its input argument.",
                 )
                 lmbd = f"{par_a_text} ->${a_text}"
@@ -606,7 +600,7 @@ for argc in range(0, 4 + 1):
             if argc == 1 and ret == "boolean" and args == {"boolean"}:
                 mdoc = javadoc(
                     f"Returns {aan(operation)} {operation} that always returns the logical negation of its input argument.",
-                    indent=4,
+                    indent=f"{' '*4}",
                     result=f"{Aan(operation)} {operation} that always returns the logical negation its input argument.",
                 )
                 lmbd = f"{par_a_text} ->$!{a_text}"
@@ -629,7 +623,7 @@ for argc in range(0, 4 + 1):
 
                 mdoc = javadoc(
                     desc,
-                    indent=4,
+                    indent=f"{' '*4}",
                     parameters=(
                         (
                             "after",
@@ -670,7 +664,7 @@ for argc in range(0, 4 + 1):
 
                 mdoc = javadoc(
                     desc,
-                    indent=4,
+                    indent=f"{' '*4}",
                     parameters=(
                         (
                             f"<{o2}>",
@@ -704,7 +698,7 @@ for argc in range(0, 4 + 1):
 
                 mdoc = javadoc(
                     f"Returns a compound {operation} that first {performs} this {operation} {using} its input {arguments} and then {performs} the given {operation} to produce a transformed result.",
-                    indent=4,
+                    indent=f"{' '*4}",
                     parameters=(
                         (
                             "after",
@@ -742,7 +736,7 @@ for argc in range(0, 4 + 1):
 
                 mdoc = javadoc(
                     desc,
-                    indent=4,
+                    indent=f"{' '*4}",
                     parameters=(
                         (
                             f"<{i2}>",
@@ -776,7 +770,7 @@ for argc in range(0, 4 + 1):
 
                 mdoc = javadoc(
                     f"Returns a compound {operation} that first {performs} the given {operation} {using} its input argument and then {performs} this {operation} to produce a transformed result.",
-                    indent=4,
+                    indent=f"{' '*4}",
                     parameters=(
                         (
                             "before",
@@ -805,7 +799,7 @@ for argc in range(0, 4 + 1):
                 mdoc = javadoc(
                     f"Returns a compound {operation} that represents the logical intersection of this {operation} and the given {operation}. "
                     + f"The compound {operation} {performs} this {operation} first; the other {operation} is not {performed} if the result of this {operation} is {{@code~false}}.",
-                    indent=4,
+                    indent=f"{' '*4}",
                     parameters=(
                         (
                             "other",
@@ -832,7 +826,7 @@ for argc in range(0, 4 + 1):
                 mdoc = javadoc(
                     f"Returns a compound {operation} that represents the logical union of this {operation} and the given {operation}. "
                     + f"The compound {operation} {performs} this {operation} first; the other {operation} is not {performed} if the result of this {operation} is {{@code~true}}.",
-                    indent=4,
+                    indent=f"{' '*4}",
                     parameters=(
                         (
                             "other",
@@ -858,7 +852,7 @@ for argc in range(0, 4 + 1):
                 # negated (predicate)
                 mdoc = javadoc(
                     f"Returns {aan(operation)} {operation} that represents the logical negation of this {operation}.",
-                    indent=4,
+                    indent=f"{' '*4}",
                     result=f"{Aan(operation)} {operation} that represents the logical negation of this {operation}.",
                 )
                 lmbd = f"{par_a_text} ->$!{mthd}({a_text})"
